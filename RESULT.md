@@ -1,3 +1,3 @@
 # Tarefa 1 - RESULT
 
-![Result](/Result.png)
+![Result](../Result.png)
