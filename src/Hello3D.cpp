@@ -59,8 +59,7 @@ const GLchar* fragmentShaderSource = "#version 450\n"
 bool rotateX=false, rotateY=false, rotateZ=false;
 
 // Função MAIN
-int main()
-{
+int main(){
 	// Inicialização da GLFW
 	glfwInit();
 
@@ -78,15 +77,14 @@ int main()
 //#endif
 
 	// Criação da janela GLFW
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Ola 3D -- Rossana!", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Ola 3D -- Helena!", nullptr, nullptr);
 	glfwMakeContextCurrent(window);
 
 	// Fazendo o registro da função de callback para a janela GLFW
 	glfwSetKeyCallback(window, key_callback);
 
 	// GLAD: carrega todos os ponteiros d funções da OpenGL
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-	{
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
 		std::cout << "Failed to initialize GLAD" << std::endl;
 
 	}
