@@ -2,8 +2,7 @@
 
 ## Tarefa 1 
 `Hello3D.cpp`
-![Result.png Github](https://github.com/aaneleh/openGL-CP2026/blob/main/RESULT.png)
-![Local](Result.png)
+![Local](RESULT.png)
 
 ## Tarefa 2
 `Cube.cpp`
@@ -14,5 +13,4 @@
 - Adicionado controle de escala: Q diminui a escala e E aumenta
 - Adicionado outro cubo na cena: criado um Struct Cube, cada cubo tem sua instância com VAO, posição e escala inicial
 
-![Result.png Github](https://github.com/aaneleh/openGL-CP2026/blob/main/RESULT2.png)
 ![Local](RESULT2.png)
