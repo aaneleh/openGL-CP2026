@@ -58,7 +58,7 @@ const GLchar* fragmentShaderSource = "#version 450\n"
 
 int main(){
 	glfwInit();
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Modulo 2- Cubo - Helena!", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Modulo 3 - Mesh - Helena!", nullptr, nullptr);
 	glfwMakeContextCurrent(window);
 
 	// Fazendo o registro da função de callback para a janela GLFW
