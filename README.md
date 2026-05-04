@@ -21,3 +21,11 @@
 - Carregado arquivo .obj pelo loadSimpleOBJ
 - Adicionado atributos de normais e coordenadas de textura (s t) ao VAO
 - Renderizado objeto carregado
+- Lido nome do arquivo de textura do material (.mtl) do objeto
+
+![Local](RESULT3.png)
+
+## Tarefa 4  `Phong.cpp` 
+
+- Carregado as informações dos vetores normais dos vértices no arquivo .OBJ (vn). 
+- 🟨 Recuperar os coeficientes de iluminação ambiente, difusa e especular do arquivo de materiais (.mtl), que serão enviados pela aplicação para o fragment shader, onde calcularemos sua contribuição para a cor do pixel.

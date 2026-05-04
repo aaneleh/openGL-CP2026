@@ -16,10 +16,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 int setupShader();
 int setupGeometry();
 int loadSimpleOBJ(string filePATH, int &nVertices, string &textureFile);
+void loadSimpleMTL(string filePATH, string &textureImage);
 
 const GLuint WIDTH = 1000, HEIGHT = 1000;
 
-string OBJECT_FILE = "Cube.obj";
+string OBJECT_FILE = "Suzanne.obj";
 
 float SPEED = 0.1; //o mover e escala vai aumentar nesse valor
 float rotateX=0.0, rotateY=0.0, rotateZ=0.0;
@@ -29,6 +30,7 @@ struct Mesh {
     GLuint VAO;
 	string meshFile;
 	string textureFile;
+	string textureImage;
 	glm::vec3 position;
 	float scale;
 	int nVertices;
@@ -79,6 +81,8 @@ int main(){
 	mesh.VAO = loadSimpleOBJ(mesh.meshFile, mesh.nVertices, mesh.textureFile);
 	mesh.position = glm::vec3(0.0,0.0,0.0);
 	mesh.scale = 0.5;
+	loadSimpleMTL("./assets/Modelos3d/"+mesh.textureFile,mesh.textureImage);
+	std::cout << "Texture: " << mesh.textureImage << std::endl;
 
 	glUseProgram(shaderID);
 
@@ -206,13 +210,13 @@ int setupShader(){
 
 
 int loadSimpleOBJ(string filePATH, int &nVertices, string &textureFile) {
-	std::vector<glm::vec3> vertices;
+    std::vector<glm::vec3> vertices;
     std::vector<glm::vec2> texCoords;
     std::vector<glm::vec3> normals;
     std::vector<GLfloat> vBuffer;
+    glm::vec3 color = glm::vec3(1.0, 0.0, 0.0); //não é mais usado mas sem isso não builda
 
     std::ifstream arqEntrada(filePATH.c_str());
-
     if (!arqEntrada.is_open()) {
         std::cerr << "Erro ao tentar ler o arquivo " << filePATH << std::endl;
         return -1;
@@ -248,8 +252,6 @@ int loadSimpleOBJ(string filePATH, int &nVertices, string &textureFile) {
                 std::istringstream ss(word);
                 std::string index;
 
-				//Cada linha vai pegar qual vertice é, qual textura, e qual normal
-				//Ex.: f 2/1/1 é vertice 2, textura 1 e normal 1
                 if (std::getline(ss, index, '/')) vi = !index.empty() ? std::stoi(index) - 1 : 0;
                 if (std::getline(ss, index, '/')) ti = !index.empty() ? std::stoi(index) - 1 : 0;
                 if (std::getline(ss, index)) ni = !index.empty() ? std::stoi(index) - 1 : 0;
@@ -268,6 +270,7 @@ int loadSimpleOBJ(string filePATH, int &nVertices, string &textureFile) {
 
     arqEntrada.close();
 
+    std::cout << "Gerando o buffer de geometria..." << std::endl;
     GLuint VBO, VAO;
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -288,7 +291,28 @@ int loadSimpleOBJ(string filePATH, int &nVertices, string &textureFile) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
-	nVertices = vBuffer.size() / 8;  // x, y, z, nx, ny, nz, s, t (valores atualmente armazenados por vértice)
+	nVertices = vBuffer.size() / 8;  // x, y, z, normais (x, y, z), s, t
 
     return VAO;
+}
+
+void loadSimpleMTL(string filePATH, string &textureImage) {
+
+    std::ifstream arqEntrada(filePATH.c_str());
+
+    if (!arqEntrada.is_open()) {
+        std::cerr << "Erro ao tentar ler o arquivo " << filePATH << std::endl;
+    }
+
+    std::string line;
+    while (std::getline(arqEntrada, line)) {
+        std::istringstream ssline(line);
+        std::string word;
+        ssline >> word;
+
+        if (word == "map_Kd") 
+            ssline >> textureImage;
+	}
+
+    arqEntrada.close();
 }
