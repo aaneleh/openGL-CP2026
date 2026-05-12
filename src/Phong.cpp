@@ -1,0 +1,511 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <assert.h>
+using namespace std;
+
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
+int setupShader();
+int setupGeometry();
+int loadSimpleOBJ(string filePATH, int &nVertices, string &textureFile);
+void loadSimpleMTL(string filePATH, string &textureImage);
+GLuint loadTexture(string filePath, int &width, int &height);
+void setupLight(string filePATH, GLuint shaderID);
+
+const GLuint WIDTH = 1000, HEIGHT = 1000;
+
+string OBJECT_FILE = "Suzanne.obj";
+string ASSETS_DIRECTORY = "../assets/Modelos3d/";
+
+float SPEED = 0.1; //o mover e escala vai aumentar nesse valor
+int selectedObject = 0;
+
+struct Mesh {
+    GLuint VAO;
+	string meshFile;
+	string materialFile;
+	string textureFile;
+	GLuint textureID;
+	int textureWidth;
+	int textureHeight;
+	glm::vec3 position;
+	glm::vec3 rotate;
+	glm::vec3 scale;
+	int nVertices;
+};
+
+Mesh createMesh(string objPath, glm::vec3 position, float scale);
+vector<Mesh> objects;
+void render(glm::mat4 model, GLint modelLoc, Mesh object);
+
+// Código fonte do Vertex Shader (em GLSL): ainda hardcoded
+const GLchar *vertexShaderSource = R"(
+#version 400
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec3 color;
+layout (location = 2) in vec3 normal;
+layout (location = 3) in vec2 texc;
+
+uniform mat4 projection;
+uniform mat4 model;
+
+out vec2 texCoord;
+out vec3 vNormal;
+out vec4 fragPos; 
+out vec4 vColor;
+void main()
+{
+   	gl_Position = projection * model * vec4(position.x, position.y, position.z, 1.0);
+	fragPos = model * vec4(position.x, position.y, position.z, 1.0);
+	texCoord = texc;
+	vNormal = normal;
+	vColor = vec4(color,1.0);
+})";
+
+// Código fonte do Fragment Shader (em GLSL): ainda hardcoded
+const GLchar *fragmentShaderSource = R"(
+#version 400
+in vec2 texCoord;
+uniform sampler2D texBuff;
+uniform vec3 lightPos;
+uniform vec3 camPos;
+uniform float ka;
+uniform float kd;
+uniform float ks;
+uniform float q;
+out vec4 color;
+in vec4 fragPos;
+in vec3 vNormal;
+in vec4 vColor;
+void main()
+{
+
+	vec3 lightColor = vec3(1.0,1.0,1.0);
+	//vec4 objectColor = texture(texBuff,texCoord);
+	vec4 objectColor = vColor;
+
+	//Coeficiente de luz ambiente
+	vec3 ambient = ka * lightColor;
+
+	//Coeficiente de reflexão difusa
+	vec3 N = normalize(vNormal);
+	vec3 L = normalize(lightPos - vec3(fragPos));
+	float diff = max(dot(N, L),0.0);
+	vec3 diffuse = kd * diff * lightColor;
+
+	//Coeficiente de reflexão especular
+	vec3 R = normalize(reflect(-L,N));
+	vec3 V = normalize(camPos - vec3(fragPos));
+	float spec = max(dot(R,V),0.0);
+	spec = pow(spec,q);
+	vec3 specular = ks * spec * lightColor; 
+
+	vec3 result = (ambient + diffuse) * vec3(objectColor) + specular;
+	color = vec4(result,1.0);
+
+})";
+
+int main(){
+	glfwInit();
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Modulo 4 - Phong - Helena!", nullptr, nullptr);
+	glfwMakeContextCurrent(window);
+
+	glfwSetKeyCallback(window, key_callback);
+
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
+		std::cout << "Failed to initialize GLAD" << std::endl;
+	}
+
+	int width, height;
+	glfwGetFramebufferSize(window, &width, &height);
+	glViewport(0, 0, width, height);
+
+	GLuint shaderID = setupShader();
+
+    objects.push_back(createMesh(ASSETS_DIRECTORY+OBJECT_FILE, glm::vec3(0.5,0.0,0.0), 0.2));
+    objects.push_back(createMesh(ASSETS_DIRECTORY+OBJECT_FILE, glm::vec3(-0.5,0.0,0.0), 0.2));
+
+	float ka = 0.1, kd =0.5, ks = 0.5, q = 10.0;
+	glm::vec3 lightPos = glm::vec3(0.0, 3.0, 0.0);
+	glm::vec3 camPos = glm::vec3(0.0,0.0,-3.0);
+
+    glUseProgram(shaderID);
+
+	glUniform1i(glGetUniformLocation(shaderID, "texBuff"), 0);
+	setupLight(ASSETS_DIRECTORY+objects[0].materialFile, shaderID); //Seta os coeficientes KA, KS, etc pegando do arquivo .mtl
+	glUniform3f(glGetUniformLocation(shaderID, "lightPos"), lightPos.x,lightPos.y,lightPos.z);
+	glUniform3f(glGetUniformLocation(shaderID, "camPos"), camPos.x,camPos.y,camPos.z);
+
+	glActiveTexture(GL_TEXTURE0);
+
+	// Matriz de projeção paralela ortográfica
+	// mat4 projection = ortho(-10.0, 10.0, -10.0, 10.0, -1.0, 1.0);
+	glm::mat4 projection = glm::ortho(-1.0, 1.0, -1.0, 1.0, -3.0, 3.0);
+	glUniformMatrix4fv(glGetUniformLocation(shaderID, "projection"), 1, GL_FALSE, value_ptr(projection));
+
+	glm::mat4 model = glm::mat4(1); //matriz identidade;
+	GLint modelLoc = glGetUniformLocation(shaderID, "model");
+	model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+	glEnable(GL_DEPTH_TEST);
+
+	while (!glfwWindowShouldClose(window)){
+		glfwPollEvents();
+
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f); //cor de fundo
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        for(int i = 0; i < objects.size(); i ++){
+            render(model, modelLoc, objects[i]);
+        }
+
+		glfwSwapBuffers(window);
+	}
+    for(int i = 0; i < objects.size(); i ++){
+        glDeleteVertexArrays(1, &objects[i].VAO);
+    }
+	glfwTerminate();
+	return 0;
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode){
+
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+		glfwSetWindowShouldClose(window, GL_TRUE);
+	}
+
+	else if(key == GLFW_KEY_0 && action == GLFW_PRESS){
+        selectedObject = -1;
+        std::cout << "Nenhum objeto selecionado" << std::endl;
+    } else if(key == GLFW_KEY_1 && action == GLFW_PRESS){
+        selectedObject = 0;
+        std::cout << "Objeto selecionado: 1" << std::endl;
+
+    }  else if(key == GLFW_KEY_2 && action == GLFW_PRESS){
+        selectedObject = 1;
+        std::cout << "Objeto selecionado: 2" << std::endl;
+    } 
+
+    if(selectedObject > -1){
+        //ROTAÇÃO
+        if (key == GLFW_KEY_X){
+            objects[selectedObject].rotate.x = action != GLFW_RELEASE;
+        } else if (key == GLFW_KEY_Y){
+            objects[selectedObject].rotate.y = action != GLFW_RELEASE;
+        } else if (key == GLFW_KEY_Z) {
+            objects[selectedObject].rotate.z = action != GLFW_RELEASE;
+        } 
+
+
+        //Controle de mover (transladar) WASD e IJ
+        else if (key == GLFW_KEY_W){
+            objects[selectedObject].position.y += action != GLFW_RELEASE ? SPEED : 0;
+        } else if (key == GLFW_KEY_S){
+            objects[selectedObject].position.y += action != GLFW_RELEASE ? -SPEED : 0;
+
+        } else if (key == GLFW_KEY_D){
+            objects[selectedObject].position.x += action != GLFW_RELEASE ? SPEED : 0;
+        } else if (key == GLFW_KEY_A){
+            objects[selectedObject].position.x += action != GLFW_RELEASE ? -SPEED : 0;
+
+        } else if (key == GLFW_KEY_T){
+            objects[selectedObject].position.z += action != GLFW_RELEASE ? SPEED : 0;
+        } else if (key == GLFW_KEY_G){
+            objects[selectedObject].position.z += action != GLFW_RELEASE ? -SPEED : 0;
+        }
+
+        //Controle de escala uniforme: [ para diminuir e ] para aumentar
+        if (key == GLFW_KEY_Q){
+            objects[selectedObject].scale.x += action != GLFW_RELEASE ? -SPEED : 0;
+            objects[selectedObject].scale.y += action != GLFW_RELEASE ? -SPEED : 0;
+            objects[selectedObject].scale.z += action != GLFW_RELEASE ? -SPEED : 0;
+        } else if (key == GLFW_KEY_E){
+            objects[selectedObject].scale.x += action != GLFW_RELEASE ? SPEED : 0;
+            objects[selectedObject].scale.y += action != GLFW_RELEASE ? SPEED : 0;
+            objects[selectedObject].scale.z += action != GLFW_RELEASE ? SPEED : 0;
+        } else if(key == GLFW_KEY_K){
+            objects[selectedObject].scale.x += action != GLFW_RELEASE ? SPEED : 0;
+        } else if(key == GLFW_KEY_J){
+            objects[selectedObject].scale.x += action != GLFW_RELEASE ? -SPEED : 0;
+        } else if(key == GLFW_KEY_I){
+            objects[selectedObject].scale.y += action != GLFW_RELEASE ? SPEED : 0;
+        } else if(key == GLFW_KEY_U){
+            objects[selectedObject].scale.y += action != GLFW_RELEASE ? -SPEED : 0;
+        } else if(key == GLFW_KEY_M){
+            objects[selectedObject].scale.z += action != GLFW_RELEASE ? SPEED : 0;
+        } else if(key == GLFW_KEY_N){
+            objects[selectedObject].scale.z += action != GLFW_RELEASE ? -SPEED : 0;
+        } 
+    }
+
+}
+
+int setupShader(){
+	// Vertex shader
+	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+	glCompileShader(vertexShader);
+	// Checando erros de compilação (exibição via log no terminal)
+	GLint success;
+	GLchar infoLog[512];
+	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+	if (!success) {
+		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+	}
+	// Fragment shader
+	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+	glCompileShader(fragmentShader);
+	// Checando erros de compilação (exibição via log no terminal)
+	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+	if (!success) {
+		glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+	}
+	// Linkando os shaders e criando o identificador do programa de shader
+	GLuint shaderProgram = glCreateProgram();
+	glAttachShader(shaderProgram, vertexShader);
+	glAttachShader(shaderProgram, fragmentShader);
+	glLinkProgram(shaderProgram);
+	// Checando por erros de linkagem
+	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+	if (!success) {
+		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+	}
+	glDeleteShader(vertexShader);
+	glDeleteShader(fragmentShader);
+
+	return shaderProgram;
+}
+
+int loadSimpleOBJ(string filePATH, int &nVertices, string &textureFile) {
+
+	std::vector<glm::vec3> vertices;
+    std::vector<glm::vec2> texCoords;
+    std::vector<glm::vec3> normals;
+    std::vector<GLfloat> vBuffer;
+    glm::vec3 color = glm::vec3(1.0, 0.0, 0.0); //não é mais usado mas sem isso não builda
+
+    std::ifstream arqEntrada(filePATH.c_str());
+    if (!arqEntrada.is_open()) {
+        std::cerr << "Erro ao tentar ler o arquivo " << filePATH << std::endl;
+        return -1;
+    }
+
+    std::string line;
+    while (std::getline(arqEntrada, line)) {
+        std::istringstream ssline(line);
+        std::string word;
+        ssline >> word;
+
+        if (word == "mtllib") {
+            ssline >> textureFile;
+
+		} else if (word == "v") {
+            glm::vec3 vertice;
+            ssline >> vertice.x >> vertice.y >> vertice.z;
+            vertices.push_back(vertice);
+
+        } else if (word == "vn") {
+            glm::vec3 normal;
+            ssline >> normal.x >> normal.y >> normal.z;
+            normals.push_back(normal);
+
+		} else if (word == "vt") {
+            glm::vec2 vt;
+            ssline >> vt.s >> vt.t;
+            texCoords.push_back(vt);
+			
+        } else if (word == "f") {
+            while (ssline >> word) {
+                int vi = 0, ti = 0, ni = 0;
+                std::istringstream ss(word);
+                std::string index;
+
+                if (std::getline(ss, index, '/')) vi = !index.empty() ? std::stoi(index) - 1 : 0;
+                if (std::getline(ss, index, '/')) ti = !index.empty() ? std::stoi(index) - 1 : 0;
+                if (std::getline(ss, index)) ni = !index.empty() ? std::stoi(index) - 1 : 0;
+
+                vBuffer.push_back(vertices[vi].x);
+                vBuffer.push_back(vertices[vi].y);
+                vBuffer.push_back(vertices[vi].z);
+                vBuffer.push_back(normals[ni].x); //normal
+                vBuffer.push_back(normals[ni].y); //normal
+                vBuffer.push_back(normals[ni].z); //normal
+                vBuffer.push_back(texCoords[ti].s); //s
+                vBuffer.push_back(texCoords[ti].t); //t
+            }
+        }
+    }
+
+    arqEntrada.close();
+
+    GLuint VBO, VAO;
+    glGenBuffers(1, &VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, vBuffer.size() * sizeof(GLfloat), vBuffer.data(), GL_STATIC_DRAW);
+    
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+    
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(1);
+
+	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(5 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(2);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+	nVertices = vBuffer.size() / 8;  // x, y, z, s, t, normais (x, y, z),
+
+    return VAO;
+}
+
+void loadSimpleMTL(string filePATH, string &textureImage) {
+
+    std::ifstream arqEntrada(filePATH.c_str());
+
+    if (!arqEntrada.is_open()) {
+        std::cerr << "Erro ao tentar ler o arquivo " << filePATH << std::endl;
+    }
+
+    std::string line;
+    while (std::getline(arqEntrada, line)) {
+        std::istringstream ssline(line);
+        std::string word;
+        ssline >> word;
+
+        if (word == "map_Kd") 
+            ssline >> textureImage;
+	}
+
+    arqEntrada.close();
+}
+
+void setupLight(string filePATH, GLuint shaderID) {
+
+	float ns, ka, ks, ke, ni, d, kd, q;
+
+    std::ifstream arqEntrada(filePATH.c_str());
+
+    if (!arqEntrada.is_open()) std::cerr << "Erro ao tentar ler o arquivo " << filePATH << std::endl;
+
+    std::string line;
+	while (std::getline(arqEntrada, line)) {
+        std::istringstream ssline(line);
+        std::string word;
+        ssline >> word;
+
+        if (word == "Ns") {
+            ssline >> ns;
+
+        } else if (word == "Ka") {
+            ssline >> ka;
+
+		} else if (word == "Ks") {
+            ssline >> ks;
+
+		} else if (word == "Ke") {
+            ssline >> ke;
+
+		} else if (word == "Ni") {
+            ssline >> ni;
+
+		} else if (word == "d") {
+            ssline >> d;
+
+		} 
+	}
+
+	glUniform1f(glGetUniformLocation(shaderID, "ka"), ka); //Ka = Coeficiente Parcela Ambiente
+	glUniform1f(glGetUniformLocation(shaderID, "kd"), ke); //Kd = Não tem no SUZANNE.MTL
+	glUniform1f(glGetUniformLocation(shaderID, "ks"), ks); //Ks = Coeficiente Parcela Especular
+	glUniform1f(glGetUniformLocation(shaderID, "q"), d); //q = Não tem no SUZANNE.MTL
+
+    arqEntrada.close();
+}
+
+GLuint loadTexture(string filePath, int &width, int &height) {
+	GLuint texID; // id da textura a ser carregada
+
+	// Gera o identificador da textura na memória
+	glGenTextures(1, &texID);
+	glBindTexture(GL_TEXTURE_2D, texID);
+
+	// Ajuste dos parâmetros de wrapping e filtering
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	// Carregamento da imagem usando a função stbi_load da biblioteca stb_image
+	int nrChannels;
+
+	unsigned char *data = stbi_load(filePath.c_str(), &width, &height, &nrChannels, 0);
+
+	if (data) {
+		if (nrChannels == 3) { // jpg, bmp
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		
+		} else { // assume que é 4 canais png
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		}
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else {
+		std::cout << "Failed to load texture " << filePath << std::endl;
+	}
+
+	stbi_image_free(data);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return texID;
+}
+
+Mesh createMesh(string objPath, glm::vec3 position, float scale) {
+    Mesh mesh;
+	mesh.meshFile = objPath;
+	mesh.VAO = loadSimpleOBJ(mesh.meshFile, mesh.nVertices, mesh.materialFile);
+	mesh.position = position;
+	mesh.rotate = glm::vec3(0.0,0.0,0.0);
+	mesh.scale = glm::vec3(scale,scale,scale);
+	loadSimpleMTL(ASSETS_DIRECTORY+mesh.materialFile,mesh.textureFile);
+	mesh.textureID = loadTexture(ASSETS_DIRECTORY+mesh.textureFile, mesh.textureWidth, mesh.textureHeight);
+    return mesh;
+}
+
+void render(glm::mat4 model, GLint modelLoc, Mesh object){
+    float angle = (GLfloat)glfwGetTime();
+
+    model = glm::mat4(1); 
+    model = glm::translate(model, glm::vec3(object.position.x, object.position.y, object.position.z));
+    model = glm::scale(model, glm::vec3(object.scale.x, object.scale.y, object.scale.z));
+
+    if(object.rotate.x != 0.0 || object.rotate.y != 0.0 || object.rotate.z != 0.0) 
+        model = glm::rotate(model, angle, object.rotate);
+
+	glBindVertexArray(object.VAO);
+	glBindTexture(GL_TEXTURE_2D, object.textureID); //conectando com o buffer de textura que será usado no draw
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    glDrawArrays(GL_TRIANGLES, 0, object.nVertices);
+}
