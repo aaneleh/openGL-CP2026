@@ -25,7 +25,7 @@
 - Aplicação de transformações no objeto selecionado:
     - Rotacionar (R) nos eixos x, y e z: Rotaciona em enquanto pressionando X, Y e Z
     - Transladar (T) nos eixos x, y e z: Move ao clicar em WASD e TG
-    - Aplicar escala (S): uniforme usando Q e E e por eixo usando J I K para os eixos x, y e z, respectivamente
+    - Aplicar escala (S): uniforme usando Q e E e por eixo usando UI, JK e NM para os eixos x, y e z, respectivamente
 
 ![Tarefa 3](MeshTransform.png)
 
