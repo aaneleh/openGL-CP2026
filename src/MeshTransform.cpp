@@ -23,8 +23,6 @@ const GLuint WIDTH = 1000, HEIGHT = 1000;
 string OBJECT_FILE = "Suzanne.obj";
 
 float SPEED = 0.1; //o mover e escala vai aumentar nesse valor
-float rotateX=0.0, rotateY=0.0, rotateZ=0.0;
-float moveX=0.0, moveZ=0.0, moveY=0.0, scale=0.4;
 int selectedObject = -1;
 
 struct Mesh {
@@ -35,7 +33,6 @@ struct Mesh {
 	glm::vec3 position;
 	glm::vec3 rotate;
 	glm::vec3 scale;
-	/* float scale; */
 	int nVertices;
 };
 
@@ -67,7 +64,7 @@ const GLchar* fragmentShaderSource = "#version 450\n"
 
 int main(){
 	glfwInit();
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Modulo 3 - Mesh - Helena!", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Aula Vivencial 1 - MeshTransforma - Helena!", nullptr, nullptr);
 	glfwMakeContextCurrent(window);
 
 	// Fazendo o registro da função de callback para a janela GLFW
@@ -126,7 +123,10 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		glfwSetWindowShouldClose(window, GL_TRUE);
 	}
 
-    else if(key == GLFW_KEY_1 && action == GLFW_PRESS){
+	else if(key == GLFW_KEY_0 && action == GLFW_PRESS){
+        selectedObject = -1;
+        std::cout << "Nenhum objeto selecionado" << std::endl;
+    } else if(key == GLFW_KEY_1 && action == GLFW_PRESS){
         selectedObject = 0;
         std::cout << "Objeto selecionado: 1" << std::endl;
 
@@ -157,9 +157,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         } else if (key == GLFW_KEY_A){
             objects[selectedObject].position.x += action != GLFW_RELEASE ? -SPEED : 0;
 
-        } else if (key == GLFW_KEY_I){
+        } else if (key == GLFW_KEY_T){
             objects[selectedObject].position.z += action != GLFW_RELEASE ? SPEED : 0;
-        } else if (key == GLFW_KEY_J){
+        } else if (key == GLFW_KEY_G){
             objects[selectedObject].position.z += action != GLFW_RELEASE ? -SPEED : 0;
         }
 
@@ -172,12 +172,18 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             objects[selectedObject].scale.x += action != GLFW_RELEASE ? SPEED : 0;
             objects[selectedObject].scale.y += action != GLFW_RELEASE ? SPEED : 0;
             objects[selectedObject].scale.z += action != GLFW_RELEASE ? SPEED : 0;
-        } else if(key == GLFW_KEY_J){
+        } else if(key == GLFW_KEY_K){
             objects[selectedObject].scale.x += action != GLFW_RELEASE ? SPEED : 0;
+        } else if(key == GLFW_KEY_J){
+            objects[selectedObject].scale.x += action != GLFW_RELEASE ? -SPEED : 0;
         } else if(key == GLFW_KEY_I){
             objects[selectedObject].scale.y += action != GLFW_RELEASE ? SPEED : 0;
-        } else if(key == GLFW_KEY_K){
+        } else if(key == GLFW_KEY_U){
+            objects[selectedObject].scale.y += action != GLFW_RELEASE ? -SPEED : 0;
+        } else if(key == GLFW_KEY_M){
             objects[selectedObject].scale.z += action != GLFW_RELEASE ? SPEED : 0;
+        } else if(key == GLFW_KEY_N){
+            objects[selectedObject].scale.z += action != GLFW_RELEASE ? -SPEED : 0;
         } 
     }
 
