@@ -2,8 +2,8 @@
 
 ## Tarefa 1  `Hello3D.cpp`
 
-  
-![Tarefa 1](RESULT.png)
+![Tarefa 1](Hello3D.png)
+
 
 ## Tarefa 2  `Cube.cpp`  
 
@@ -14,23 +14,21 @@
 - Adicionado controle de escala: Q diminui a escala e E aumenta
 - Adicionado outro cubo na cena: criado um Struct Cube, cada cubo tem sua instância com VAO, posição e escala inicial
 
-![Tarefa 2](RESULT2.png)
+![Tarefa 2](Cube.png)
+
 
 ## Vivencial 1 `MeshTransform.cpp`
 
-- 🟩 Leitura de arquivos .OBJ (recomenda-se testar com os modelos que estão em:
-https://github.com/guilhermechagaskurtz/CGCCHibrido/tree/main/assets/Modelos3D)
-- 🟩 Exibir mais de um objeto na tela
-- 🟩 Permitir a seleção dos objetos, a partir de uma tecla 
-    - Foram instanciados 2 objetos, seleciona qual o objeto transformar nas teclas 1 e 2
-- 🟩 Permitir a aplicação de transformações no objeto selecionado:
-    - 🟩 Rotacionar (R) nos eixos x, y e z
-        - Rotaciona em enquanto pressionando X, Y e Z
-    - 🟩 Transladar (T) nos eixos x, y e z (pode-se usar as setas ou WASD)
-        - Move ao clicar em WASD
-    - 🟩 Aplicar escala (S) nos eixos x, y e z (pode-se ter a opção de escala uniforme também)
-        - Modifica a escala de forma uniforme usando Q e E
-        - Modifica a escala por eixo usando J I K para os eixos x, y e z, respectivamente
+- Leitura de arquivos .OBJ
+- Exibir mais de um objeto na tela
+- Seleção dos objetos, a partir de uma tecla (1 e 2) (0 remove a seleção)
+- Aplicação de transformações no objeto selecionado:
+    - Rotacionar (R) nos eixos x, y e z: Rotaciona em enquanto pressionando X, Y e Z
+    - Transladar (T) nos eixos x, y e z: Move ao clicar em WASD e TG
+    - Aplicar escala (S): uniforme usando Q e E e por eixo usando J I K para os eixos x, y e z, respectivamente
+
+![Tarefa 3](MeshTransform.png)
+
 
 ## Tarefa 3  `Mesh.cpp` 
 
@@ -39,9 +37,12 @@ https://github.com/guilhermechagaskurtz/CGCCHibrido/tree/main/assets/Modelos3D)
 - Renderizado objeto carregado
 - Lido nome do arquivo de textura do material (.mtl) do objeto
 
-![Tarefa 3](RESULT3.png)
+![Tarefa 3](Mesh.png)
+
 
 ## Tarefa 4  `Phong.cpp` 
 
 - Carregado as informações dos vetores normais dos vértices no arquivo .OBJ (vn). 
-- 🟨 Recuperar os coeficientes de iluminação ambiente, difusa e especular do arquivo de materiais (.mtl), que serão enviados pela aplicação para o fragment shader, onde calcularemos sua contribuição para a cor do pixel.
+- Recuperar os coeficientes de iluminação ambiente, difusa e especular do arquivo de materiais (.mtl), que serão enviados pela aplicação para o fragment shader, onde calcularemos sua contribuição para a cor do pixel.
+
+![Tarefa 3](Phong.png)
