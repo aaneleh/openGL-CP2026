@@ -138,11 +138,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     if(selectedObject > -1){
         //ROTAÇÃO
         if (key == GLFW_KEY_X){
-            objects[selectedObject].rotate.x = action != GLFW_RELEASE;
+            objects[selectedObject].rotate.x += action != GLFW_RELEASE ? SPEED : 0;
         } else if (key == GLFW_KEY_Y){
-            objects[selectedObject].rotate.y = action != GLFW_RELEASE;
+            objects[selectedObject].rotate.y += action != GLFW_RELEASE ? SPEED : 0;
         } else if (key == GLFW_KEY_Z) {
-            objects[selectedObject].rotate.z = action != GLFW_RELEASE;
+            objects[selectedObject].rotate.z += action != GLFW_RELEASE ? SPEED : 0;
         } 
 
 
@@ -358,8 +358,9 @@ void render(glm::mat4 model, GLint modelLoc, Mesh object){
     model = glm::translate(model, glm::vec3(object.position.x, object.position.y, object.position.z));
     model = glm::scale(model, glm::vec3(object.scale.x, object.scale.y, object.scale.z));
 
-    if(object.rotate.x != 0.0 || object.rotate.y != 0.0 || object.rotate.z != 0.0) 
-        model = glm::rotate(model, angle, object.rotate);
+	model = glm::rotate(model, object.rotate.x, glm::vec3(1.0,0.0,0.0));
+	model = glm::rotate(model, object.rotate.y, glm::vec3(0.0,1.0,0.0));
+	model = glm::rotate(model, object.rotate.z, glm::vec3(0.0,0.0,1.0));
 
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     glBindVertexArray(object.VAO);
